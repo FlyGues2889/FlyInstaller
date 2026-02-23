@@ -48,7 +48,8 @@ class FlyInstaller:
         window_height = 760
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
-        # 设置窗口位置
+        
+        self.root.iconbitmap("install.ico")
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # ========== 关键：字体平滑配置 + 系统默认字体 ==========
