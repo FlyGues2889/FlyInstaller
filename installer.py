@@ -48,8 +48,7 @@ class FlyInstaller:
         window_height = 760
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
-        
-        self.root.iconbitmap("install.ico")
+        # 设置窗口位置
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # ========== 关键：字体平滑配置 + 系统默认字体 ==========
@@ -94,12 +93,9 @@ class FlyInstaller:
     # ========== 新增：获取默认package路径（适配exe运行） ==========
     def get_default_package_path(self):
         if getattr(sys, 'frozen', False):
-            # exe运行时：获取exe文件所在目录（而非临时解压目录）
-            base_path = os.path.dirname(os.path.abspath(sys.executable))
+            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(os.path.abspath(sys.executable))
         else:
-            # 源码运行时：获取脚本所在目录
             base_path = os.path.dirname(os.path.abspath(__file__))
-        # 返回应用目录下的package文件夹
         return os.path.join(base_path, "package")
     
     def create_main_layout(self):
