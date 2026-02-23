@@ -93,9 +93,12 @@ class FlyInstaller:
     # ========== 新增：获取默认package路径（适配exe运行） ==========
     def get_default_package_path(self):
         if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(os.path.abspath(sys.executable))
+            # exe运行时：获取exe文件所在目录（而非临时解压目录）
+            base_path = os.path.dirname(os.path.abspath(sys.executable))
         else:
+            # 源码运行时：获取脚本所在目录
             base_path = os.path.dirname(os.path.abspath(__file__))
+        # 返回应用目录下的package文件夹
         return os.path.join(base_path, "package")
     
     def create_main_layout(self):
