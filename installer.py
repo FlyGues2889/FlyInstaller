@@ -37,8 +37,19 @@ class FlyInstaller:
     def __init__(self, root):
         self.root = root
         self.root.title("FlyInstaller")
-        self.root.geometry("900x680")  
+        self.root.geometry("960x760") 
         self.root.resizable(False, False)
+        
+        # 获取屏幕宽高
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        # 计算窗口居中坐标
+        window_width = 960
+        window_height = 760
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        # 设置窗口位置
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # ========== 关键：字体平滑配置 + 系统默认字体 ==========
         # 开启Windows字体平滑（抗锯齿）
@@ -63,8 +74,10 @@ class FlyInstaller:
         self.cancel_flag = False
         self.exe_silent_params = ["/S", "/verysilent", "/silent", "/quiet", "/qn", "/norestart"]
         
-        # ========== 修改1：设置默认路径为./package ==========
-        default_package_path = os.path.abspath("./package")
+        # ========== 新增：安装目标目录默认值 ==========
+        self.target_path_var = tk.StringVar(value="C:\\Program Files\\")  # 默认安装路径
+        # 获取默认package路径（适配exe/源码运行）
+        default_package_path = self.get_default_package_path()
         default_path = default_package_path if os.path.exists(default_package_path) else "当前未选择文件夹（默认路径./package不存在）"
         self.path_var = tk.StringVar(value=default_path)
         
@@ -74,103 +87,16 @@ class FlyInstaller:
         # 初始化日志
         self.add_log("✅ 程序已启动，等待选择安装包文件夹...")
         
-        # ========== 修改2：自动加载默认文件夹 ==========
+        # 自动加载默认文件夹
         self.load_default_folder()
     
-    # 新增load_default_folder方法
-    def load_default_folder(self):
-        """自动加载默认路径./package的安装包"""
-        default_package_path = os.path.abspath("./package")
-        if not os.path.exists(default_package_path):
-            self.add_log(f"⚠️ 默认路径 {default_package_path} 不存在，需手动选择文件夹")
-            return
-        
-        self.add_log(f"📁 自动加载默认文件夹：{default_package_path}")
-        self.path_var.set(default_package_path)
-        self.install_files.clear()
-        self.file_listbox.delete(0, tk.END)
-        
-        try:
-            file_count = 0
-            for file in os.listdir(default_package_path):
-                file_path = Path(default_package_path) / file
-                if file_path.suffix.lower() in [".exe", ".msi"]:
-                    self.install_files.append(str(file_path))
-                    self.file_listbox.insert(tk.END, file)
-                    file_count += 1
-                    self.add_log(f"🔍 识别到安装包：{file}")
-            
-            if file_count == 0:
-                self.add_log("⚠️ 默认文件夹中未找到.exe或.msi安装包")
-            else:
-                self.add_log(f"✅ 共识别到 {file_count} 个安装包")
-        except Exception as e:
-            self.add_log(f"❌ 读取默认文件夹失败：{str(e)}")
-    
-    # 原有select_folder方法保持不变
-    def select_folder(self):
-        """选择文件夹并识别安装包"""
-        self.add_log("📂 开始选择安装包文件夹...")
-        folder_path = ctk.filedialog.askdirectory(title="选择安装包文件夹")
-        if not folder_path:
-            self.add_log("❌ 取消了文件夹选择")
-            return
-        
-        self.add_log(f"📁 已选择文件夹：{folder_path}")
-        self.path_var.set(folder_path)
-        self.install_files.clear()
-        self.file_listbox.delete(0, tk.END)
-        
-        try:
-            file_count = 0
-            for file in os.listdir(folder_path):
-                file_path = Path(folder_path) / file
-                if file_path.suffix.lower() in [".exe", ".msi"]:
-                    self.install_files.append(str(file_path))
-                    self.file_listbox.insert(tk.END, file)
-                    file_count += 1
-                    self.add_log(f"🔍 识别到安装包：{file}")
-            
-            if file_count == 0:
-                self.add_log("⚠️ 未在该文件夹中找到.exe或.msi安装包")
-            else:
-                self.add_log(f"✅ 共识别到 {file_count} 个安装包")
-        except Exception as e:
-            self.add_log(f"❌ 读取文件夹失败：{str(e)}")
-
-        self.root = root
-        self.root.title("FlyInstaller")
-        self.root.geometry("900x680")  
-        self.root.resizable(False, False)
-        
-        # ========== 关键：字体平滑配置 + 系统默认字体 ==========
-        # 开启Windows字体平滑（抗锯齿）
-        if os.name == "nt":
-            self.root.tk.call("tk", "scaling", 1.0)  # 适配系统DPI
-            # 开启字体抗锯齿（Windows专属）
-            self.root.tk.call("set", "tk_useSystemFontSettings", "1")
-        
-        # 获取系统默认字体配置
-        self.default_font = tk.font.nametofont("TkDefaultFont")
-        # 先获取默认字体配置，再修改weight（避免参数重复）
-        font_config = self.default_font.configure()
-        font_config["weight"] = "bold"
-        self.bold_font = tk.font.Font(** font_config)
-        
-        # 关键：显式设置root窗口背景
-        self.root.configure(fg_color=COLORS["global_bg"])
-        
-        # 初始化变量
-        self.install_files = []
-        self.is_installing = False
-        self.cancel_flag = False
-        self.exe_silent_params = ["/S", "/verysilent", "/silent", "/quiet", "/qn", "/norestart"]
-        
-        # 创建整体布局
-        self.create_main_layout()
-        
-        # 初始化日志
-        self.add_log("✅ 程序已启动，等待选择安装包文件夹...")
+    # ========== 新增：获取默认package路径（适配exe运行） ==========
+    def get_default_package_path(self):
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_path, "package")
     
     def create_main_layout(self):
         # 主容器（左右布局）
@@ -200,6 +126,15 @@ class FlyInstaller:
             text_color="#1a365d"
         )
         emoji_label.pack(expand=True)
+        
+        # 显示版本号行
+        version_label = ctk.CTkLabel(
+            left_frame,
+            text="v0.1.1 By Lvi_Fly",
+            font=ctk.CTkFont(size=10),
+            text_color="#868686"
+        )
+        version_label.pack(side=tk.LEFT, expand=True, padx=100, pady=10)
         
         # 2. 右侧功能面板（核心区域）
         right_panel = ctk.CTkFrame(
@@ -248,37 +183,83 @@ class FlyInstaller:
         )
         dir_frame.pack(fill=tk.X, pady=(0, PADDING["section_gap"]))
         
-        self.path_var = tk.StringVar(value="当前未选择文件夹")
         path_entry = ctk.CTkEntry(
             dir_frame,
             textvariable=self.path_var,
             font=ctk.CTkFont(size=12),
             state="readonly",
-            fg_color=COLORS["content_bg"],
-            border_color=COLORS["border_color"],
-            border_width=1,
+            border_width=0,
             corner_radius=6,
+            fg_color="#F0F0F2",
+            text_color=COLORS["text_secondary"],
             height=38
         )
         path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
         select_btn = ctk.CTkButton(
             dir_frame,
-            text="选择...",
+            text="更改",
             command=self.select_folder,
             font=ctk.CTkFont(size=12),
-            fg_color=COLORS["content_bg"],
+            fg_color="#f8f8f9",
             text_color=COLORS["text_primary"],
             border_color=COLORS["border_color"],
             border_width=1,
             corner_radius=6,
             height=38,
             width=80,
-            hover_color="#f8f8f9"
+            hover_color="#e0e0e0"
         )
         select_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
-        # ========== 2.3 安装列表区域 ==========
+        # ========== 新增：2.3 安装目标目录区域 ==========
+        # 小标题
+        target_subtitle = ctk.CTkLabel(
+            panel_inner,
+            text="目标目录",
+            font=ctk.CTkFont(size=14),
+            text_color=COLORS["text_primary"]
+        )
+        target_subtitle.pack(anchor=tk.W, pady=(PADDING["section_gap"], PADDING["subtitle_to_content"]))
+        
+        # 目标路径选择行（输入框+按钮）
+        target_frame = ctk.CTkFrame(
+            panel_inner,
+            fg_color="transparent",
+            border_width=0
+        )
+        target_frame.pack(fill=tk.X, pady=(0, PADDING["section_gap"]))
+        
+        target_entry = ctk.CTkEntry(
+            target_frame,
+            textvariable=self.target_path_var,
+            font=ctk.CTkFont(size=12),
+            state="readonly",
+            border_width=0,
+            corner_radius=6,
+            fg_color="#F0F0F2",
+            text_color=COLORS["text_secondary"],
+            height=38
+        )
+        target_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        target_select_btn = ctk.CTkButton(
+            target_frame,
+            text="更改",
+            command=self.select_target_folder,
+            font=ctk.CTkFont(size=12),
+            fg_color="#f8f8f9",
+            text_color=COLORS["text_primary"],
+            border_color=COLORS["border_color"],
+            border_width=1,
+            corner_radius=6,
+            height=38,
+            width=80,
+            hover_color="#e0e0e0"
+        )
+        target_select_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # ========== 2.4 安装列表区域 ==========
         # 小标题
         list_subtitle = ctk.CTkLabel(
             panel_inner,
@@ -291,7 +272,7 @@ class FlyInstaller:
         # 说明文字
         list_note = ctk.CTkLabel(
             panel_inner,
-            text="自动识别 .exe 和 .msi 文件",
+            text="自动识别出的 .exe 和 .msi 文件会显示在下方",
             font=ctk.CTkFont(size=11),
             text_color=COLORS["text_secondary"]
         )
@@ -327,7 +308,7 @@ class FlyInstaller:
             self.file_listbox.configure(font=("Segoe UI", 14))  # Windows默认无衬线字体
         self.file_listbox.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         
-        # ========== 2.4 日志输出区域 ==========
+        # ========== 2.5 日志输出区域 ==========
         # 小标题
         log_subtitle = ctk.CTkLabel(
             panel_inner,
@@ -366,7 +347,7 @@ class FlyInstaller:
             self.log_text.configure(font=("Segoe UI", 14))
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         
-        # ========== 2.5 进度条 ==========
+        # ========== 2.6 进度条 ==========
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_bar = ctk.CTkProgressBar(
             panel_inner,
@@ -378,7 +359,7 @@ class FlyInstaller:
         )
         self.progress_bar.pack(fill=tk.X, pady=(0, PADDING["panel_pad"]))
         
-        # ========== 2.6 按钮区域 ==========
+        # ========== 2.7 按钮区域 ==========
         btn_frame = ctk.CTkFrame(
             panel_inner,
             fg_color="transparent",
@@ -417,6 +398,14 @@ class FlyInstaller:
         )
         self.start_btn.pack(side=tk.RIGHT)
     
+    # ========== 新增：选择安装目标目录 ==========
+    def select_target_folder(self):
+        """选择安装目标目录"""
+        target_folder = ctk.filedialog.askdirectory(title="选择安装目标目录")
+        if target_folder:
+            self.target_path_var.set(target_folder)
+            self.add_log(f"📁 已选择安装目标目录：{target_folder}")
+    
     def select_folder(self):
         """选择文件夹并识别安装包"""
         self.add_log("📂 开始选择安装包文件夹...")
@@ -446,6 +435,36 @@ class FlyInstaller:
                 self.add_log(f"✅ 共识别到 {file_count} 个安装包")
         except Exception as e:
             self.add_log(f"❌ 读取文件夹失败：{str(e)}")
+    
+    # ========== 新增：加载默认package文件夹 ==========
+    def load_default_folder(self):
+        """自动加载默认路径./package的安装包"""
+        default_package_path = self.get_default_package_path()
+        if not os.path.exists(default_package_path):
+            self.add_log(f"⚠️ 默认路径 {default_package_path} 不存在，需手动选择文件夹")
+            return
+        
+        self.add_log(f"📁 自动加载默认文件夹：{default_package_path}")
+        self.path_var.set(default_package_path)
+        self.install_files.clear()
+        self.file_listbox.delete(0, tk.END)
+        
+        try:
+            file_count = 0
+            for file in os.listdir(default_package_path):
+                file_path = Path(default_package_path) / file
+                if file_path.suffix.lower() in [".exe", ".msi"]:
+                    self.install_files.append(str(file_path))
+                    self.file_listbox.insert(tk.END, file)
+                    file_count += 1
+                    self.add_log(f"🔍 识别到安装包：{file}")
+            
+            if file_count == 0:
+                self.add_log("⚠️ 默认文件夹中未找到.exe或.msi安装包")
+            else:
+                self.add_log(f"✅ 共识别到 {file_count} 个安装包")
+        except Exception as e:
+            self.add_log(f"❌ 读取默认文件夹失败：{str(e)}")
     
     def add_log(self, message):
         """线程安全的日志添加"""
@@ -489,54 +508,90 @@ class FlyInstaller:
         return byte_data.decode('utf-8', errors='ignore')
     
     def install_file(self, file_path):
-        """安装单个文件（修复静默安装逻辑，彻底解决MSI问题）"""
+        """安装单个文件（适配安装目标目录）"""
         try:
             self.add_log(f"\n📦 开始安装：{os.path.basename(file_path)}")
             self.add_log(f"📂 文件路径：{file_path}")
+            # 新增：打印安装目标目录
+            target_path = self.target_path_var.get()
+            self.add_log(f"📌 安装目标目录：{target_path}")
 
             success = False
 
             # --------------------------
-            # 1. 处理 .exe 静默安装
+            # 1. 处理 .exe 静默安装（适配目标路径）
             # --------------------------
             if file_path.lower().endswith(".exe"):
-                for param in self.exe_silent_params:
+                # 常见的EXE安装路径参数（不同安装包可能不同）
+                exe_target_params = [
+                    f"/DIR={target_path}",  # Inno Setup 安装包
+                    f"/INSTALLDIR={target_path}",  # NSIS 安装包
+                    f"-dir {target_path}",  # 部分自定义安装包
+                ]
+                # 组合静默参数+目标路径参数
+                for silent_param in self.exe_silent_params:
                     if self.cancel_flag:
                         break
+                    # 先试带目标路径的参数
+                    for target_param in exe_target_params:
+                        cmd = [file_path, silent_param, target_param]
+                        self.add_log(f"🔧 尝试执行：{' '.join(cmd)}")
+                        
+                        try:
+                            result = subprocess.run(
+                                cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                timeout=300,
+                                shell=True,
+                                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
+                            )
+                            stdout = self.safe_decode(result.stdout)
+                            stderr = self.safe_decode(result.stderr)
 
-                    cmd = [file_path, param]
-                    self.add_log(f"🔧 尝试执行：{' '.join(cmd)}")
-
-                    try:
-                        result = subprocess.run(
-                            cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            timeout=300,
-                            shell=True,
-                            creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
-                        )
-                        stdout = self.safe_decode(result.stdout)
-                        stderr = self.safe_decode(result.stderr)
-
-                        # 成功判断：0=成功，259=仍在运行（也算成功）
-                        if result.returncode in (0, 259):
-                            self.add_log(f"✅ 参数 {param} 静默安装成功")
-                            if stdout:
-                                self.add_log(f"📝 输出：{stdout[:300]}")
-                            success = True
+                            # 成功判断：0=成功，259=仍在运行（也算成功）
+                            if result.returncode in (0, 259):
+                                self.add_log(f"✅ 参数 {silent_param} + {target_param} 静默安装成功")
+                                if stdout:
+                                    self.add_log(f"📝 输出：{stdout[:300]}")
+                                success = True
+                                break
+                            elif result.returncode in (1, 2):
+                                self.add_log(f"⚠️ 参数 {silent_param} + {target_param} 触发交互安装（需手动完成）")
+                                success = True
+                                break
+                            else:
+                                self.add_log(f"⚠️ 参数组合失败，返回码：{result.returncode}")
+                                if stderr:
+                                    self.add_log(f"❌ 错误：{stderr[:300]}")
+                        except Exception as e:
+                            self.add_log(f"⚠️ 参数组合执行异常：{str(e)}")
+                    if success:
+                        break
+                
+                # 所有带目标路径的参数都失败 → 试仅静默参数
+                if not success:
+                    for silent_param in self.exe_silent_params:
+                        if self.cancel_flag:
                             break
-                        # 1/2=触发交互（也算安装成功，只是需要手动点）
-                        elif result.returncode in (1, 2):
-                            self.add_log(f"⚠️ 参数 {param} 触发交互安装（需手动完成）")
-                            success = True
-                            break
-                        else:
-                            self.add_log(f"⚠️ 参数 {param} 失败，返回码：{result.returncode}")
-                            if stderr:
-                                self.add_log(f"❌ 错误：{stderr[:300]}")
-                    except Exception as e:
-                        self.add_log(f"⚠️ 参数 {param} 异常：{str(e)}")
+                        cmd = [file_path, silent_param]
+                        self.add_log(f"🔧 尝试仅静默参数：{' '.join(cmd)}")
+                        try:
+                            result = subprocess.run(
+                                cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                timeout=300,
+                                shell=True
+                            )
+                            if result.returncode in (0, 259, 1, 2):
+                                self.add_log(f"✅ 仅静默参数 {silent_param} 安装成功（使用默认路径）")
+                                success = True
+                                break
+                            else:
+                                self.add_log(f"⚠️ 仅静默参数失败，返回码：{result.returncode}")
+                        except Exception as e:
+                            self.add_log(f"⚠️ 仅静默参数执行异常：{str(e)}")
 
                 # 所有静默参数都失败 → 手动运行
                 if not success:
@@ -552,37 +607,38 @@ class FlyInstaller:
                     success = result.returncode not in (-1, 127)
 
             # --------------------------
-            # 2. 处理 .msi 静默安装（核心修复）
+            # 2. 处理 .msi 静默安装（适配目标路径）
             # --------------------------
             elif file_path.lower().endswith(".msi"):
                 try:
-                    # 2.1 管理员权限检测（必须）
+                    # 管理员权限检测（必须）
                     import ctypes
                     try:
                         is_admin = ctypes.windll.shell32.IsUserAnAdmin()
                         if not is_admin:
                             self.add_log("❌ 错误：当前无管理员权限，MSI 无法安装！")
-                            self.add_log("💡 请右键程序 → 以管理员身份运行")
+                            self.add_log("ℹ️ 请右键程序 → 以管理员身份运行")
                             return False
                     except Exception as e:
                         self.add_log(f"⚠️ 管理员检测异常：{str(e)}")
 
-                    # 2.2 路径处理（彻底解决引号/空格问题）
+                    # 路径处理（彻底解决引号/空格问题）
                     msi_path = os.path.abspath(file_path)
                     if not os.path.exists(msi_path):
                         self.add_log(f"❌ MSI 文件不存在：{msi_path}")
                         return False
 
-                    # 2.3 构建 MSI 命令（先 /qb 半静默，兼容性最好）
+                    # 构建 MSI 命令（带目标路径 INSTALLDIR）
                     cmd = [
                         "msiexec.exe",
-                        "/i", f'"{msi_path}"',  # 路径必须加英文双引号
+                        "/i", f'"{msi_path}"',
+                        f'INSTALLDIR="{target_path}"',  # 新增：指定MSI安装路径
                         "/qb",                  # 半静默（显示进度，比 /qn 稳定）
                         "/norestart"            # 不自动重启
                     ]
-                    self.add_log(f"🔧 MSI 命令：{' '.join(cmd)}")
+                    self.add_log(f"🔧 MSI 命令（带目标路径）：{' '.join(cmd)}")
 
-                    # 2.4 执行 MSI 安装
+                    # 执行 MSI 安装
                     result = subprocess.run(
                         cmd,
                         stdout=subprocess.PIPE,
@@ -594,7 +650,7 @@ class FlyInstaller:
                     stdout = self.safe_decode(result.stdout)
                     stderr = self.safe_decode(result.stderr)
 
-                    # 2.5 MSI 成功返回码（微软官方）
+                    # MSI 成功返回码（微软官方）
                     msi_success = [0, 1641, 3010, 259]
                     if result.returncode in msi_success:
                         self.add_log(f"✅ MSI 安装成功，返回码：{result.returncode}")
@@ -602,16 +658,16 @@ class FlyInstaller:
                             self.add_log(f"📝 MSI 输出：{stdout[:300]}")
                         success = True
                     else:
-                        self.add_log(f"❌ MSI 安装失败，返回码：{result.returncode}")
+                        self.add_log(f"❌ MSI 安装失败（带目标路径），返回码：{result.returncode}")
                         if stderr:
                             self.add_log(f"❌ MSI 错误：{stderr[:500]}")
 
-                        # 2.6 失败重试：去掉 /qb 用 /qn 完全静默
-                        self.add_log("ℹ️ 重试：使用 /qn 完全静默模式")
+                        # 失败重试：去掉目标路径，用默认路径
+                        self.add_log("ℹ️ 重试：使用默认安装路径")
                         retry_cmd = [
                             "msiexec.exe",
                             "/i", f'"{msi_path}"',
-                            "/qn",
+                            "/qb",
                             "/norestart"
                         ]
                         self.add_log(f"🔧 重试命令：{' '.join(retry_cmd)}")
@@ -623,7 +679,7 @@ class FlyInstaller:
                             shell=True
                         )
                         if retry_result.returncode in msi_success:
-                            self.add_log("✅ MSI 重试安装成功")
+                            self.add_log("✅ MSI 重试安装成功（默认路径）")
                             success = True
                         else:
                             self.add_log(f"❌ 重试失败，返回码：{retry_result.returncode}")
@@ -641,13 +697,13 @@ class FlyInstaller:
                 return True
             else:
                 self.add_log(f"❌ 安装失败：{os.path.basename(file_path)}")
-                self.add_log("💡 建议：手动运行安装包，或检查管理员权限")
+                self.add_log("ℹ️ 建议：手动运行该安装包，或检查管理员权限")
                 return False
 
         except Exception as e:
             self.add_log(f"❌ 安装异常：{os.path.basename(file_path)} - {str(e)}")
             return False
-            
+        
     def batch_install(self):
         """批量安装核心逻辑"""
         total_files = len(self.install_files)
